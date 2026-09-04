@@ -1,111 +1,497 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { PageLayout } from '../../components/layout/PageLayout';
-import { Button } from '../../components/common/Button';
-import { Badge } from '../../components/common/Badge';
-import { PriceBreakdown } from '../../components/commerce/PriceBreakdown';
-import { primaryProduct, defaultPriceLedger, defaultAgentSession } from '../../data/mockData';
+import { primaryProduct, defaultAgentSession } from '../../data/mockData';
 import { formatCurrency } from '../../lib/utils';
+import { PaymentVerificationResult, Product } from '../../types';
+
+interface PaymentSuccessLocationState {
+  payment?: PaymentVerificationResult;
+  product?: Product;
+  orderId?: string;
+}
 
 export const PaymentSuccessPage: React.FC = () => {
   const navigate = useNavigate();
-  const product = primaryProduct;
+  const location = useLocation();
+  const state = (location.state || {}) as PaymentSuccessLocationState;
+
+  const payment = state.payment;
+  const product = state.product || primaryProduct;
   const session = defaultAgentSession;
+  const orderId = state.orderId || payment?.orderId || '#SP-1024';
+  const paymentId = payment?.paymentId || 'pay_test_984128';
+  const amount = payment?.amount || 2799;
 
   return (
     <PageLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Success Header */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-32 text-center shadow-L1 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-tertiary-fixed/40 text-tertiary flex items-center justify-center mx-auto shadow-sm">
-            <span className="material-symbols-outlined text-[36px]">check_circle</span>
-          </div>
-
-          <div>
-            <Badge variant="verified" size="sm" icon="lock">
-              Paid via Razorpay UPI • Immutable Token Settled
-            </Badge>
-            <h1 className="font-headline text-display font-bold text-on-surface mt-3">
-              Payment Successful
-            </h1>
-            <div className="font-mono text-display font-bold text-on-surface mt-1">
-              {formatCurrency(defaultPriceLedger.totalSettlement)}
-            </div>
-          </div>
-
-          {/* Transaction Metadata Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-surface-container-low rounded-xl text-mono-data text-[12px] text-left">
-            <div>
-              <span className="text-on-surface-variant block text-[10px] uppercase">Order ID</span>
-              <span className="font-semibold text-on-surface">{session.sessionId}</span>
-            </div>
-            <div>
-              <span className="text-on-surface-variant block text-[10px] uppercase">Transaction TX</span>
-              <span className="font-semibold text-on-surface">{session.txId}</span>
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <span className="text-on-surface-variant block text-[10px] uppercase">Security Audit</span>
-              <span className="font-semibold text-tertiary">ECDSA SIGNED</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Product & Fulfillment Summary */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-20 shadow-L1 space-y-4">
-          <div className="flex items-center justify-between border-b border-surface-container-high pb-3">
-            <h3 className="font-headline text-body-md font-bold text-on-surface">
-              Order Fulfillment Summary
-            </h3>
-            <span className="text-label-sm font-mono text-tertiary font-semibold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">local_shipping</span>
-              {product.fulfillmentSla}
+      <div className="w-full max-w-content mx-auto space-y-space-24">
+        {/* Context Breadcrumb Strip */}
+        <div className="flex items-center justify-between pb-space-8 border-b border-surface-container-high">
+          <div className="flex items-center gap-space-8 text-on-surface-variant font-body text-body-sm">
+            <span className="font-mono text-label-md uppercase tracking-wider text-on-surface-variant font-semibold">
+              Autonomous Checkout
+            </span>
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span className="font-mono text-on-surface font-semibold">
+              Order Confirmation {orderId}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="w-16 h-16 rounded-xl object-cover border border-outline-variant/20 bg-surface-container-low"
-            />
-            <div className="flex-1">
-              <h4 className="font-headline text-body-sm font-bold text-on-surface">
-                {product.name}
-              </h4>
-              <p className="text-label-sm text-on-surface-variant">
-                Size: UK {product.selectedSize} | Color: {product.colors[0]}
-              </p>
-            </div>
-            <div className="font-mono text-body-md font-bold text-on-surface">
-              {formatCurrency(product.finalPrice)}
-            </div>
+          <div className="hidden sm:flex items-center gap-space-8 px-space-12 py-1 rounded-full bg-surface-container font-mono text-label-sm text-on-surface-variant">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+            <span>TLS 256-bit GCM • Node: rzp-bom-edge-04 • RZP TEST-RAIL v2.4</span>
           </div>
         </div>
 
-        {/* Ledger */}
-        <PriceBreakdown ledger={defaultPriceLedger} offer={product.merchantOffer} />
+        {/* Content Canvas */}
+        <div className="max-w-[56rem] mx-auto w-full py-space-16 flex flex-col gap-space-32">
+          {/* 1. Editorial Centered Success Header */}
+          <section className="flex flex-col items-center text-center">
+            {/* Quiet Status Mark */}
+            <div className="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center mb-space-16 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
+              <div className="w-9 h-9 rounded-full bg-emerald-700 flex items-center justify-center text-on-secondary shadow-sm">
+                <span
+                  className="material-symbols-outlined text-[20px] select-none text-white"
+                  style={{ fontVariationSettings: "'wght' 600" }}
+                >
+                  check
+                </span>
+              </div>
+            </div>
 
-        {/* Navigation & Trace Link */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <Button
-            variant="primary"
-            onClick={() => navigate('/')}
-            iconLeft="shopping_bag"
-            className="w-full sm:w-auto"
-          >
-            Continue Shopping
-          </Button>
+            <h1 className="font-headline text-headline-lg text-on-surface tracking-tight font-bold">
+              Payment successful
+            </h1>
+            <p className="font-body text-body-md text-on-surface-variant mt-space-4">
+              Your order has been cryptographically confirmed.
+            </p>
 
-          <Link
-            to="/agent/trace"
-            className="inline-flex items-center gap-1 text-body-sm font-semibold text-secondary hover:underline"
-          >
-            <span className="material-symbols-outlined text-[18px]">terminal</span>
-            View Full Autonomous Decision Trace
-          </Link>
+            {/* Monetary Ledger Display */}
+            <div className="mt-space-20 flex flex-col items-center">
+              <div className="font-mono text-[38px] leading-[44px] font-bold text-on-surface tracking-tight">
+                {formatCurrency(amount)}
+              </div>
+              <div className="mt-space-8 inline-flex items-center gap-space-8 px-space-12 py-space-4 rounded bg-surface-container text-on-surface-variant font-mono text-label-sm tracking-wider uppercase border border-outline-variant/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                <span>Paid via Razorpay Test Rail • Immutable Token Settled</span>
+              </div>
+            </div>
+
+            {/* Reference Metadata Strip */}
+            <div className="mt-space-16 flex flex-wrap items-center justify-center gap-space-12 text-on-surface-variant font-mono text-body-sm">
+              <span className="px-space-8 py-space-2 rounded bg-surface-container-low text-on-surface font-semibold border border-outline-variant/20">
+                {orderId}
+              </span>
+              <span className="text-outline-variant select-none">•</span>
+              <span>
+                Payment ID: <span className="text-on-surface font-semibold">{paymentId}</span>
+              </span>
+              <span className="text-outline-variant select-none">•</span>
+              <span>
+                Tx ID: <span className="text-on-surface font-semibold">{session.txId}</span>
+              </span>
+              <span className="text-outline-variant select-none">•</span>
+              <span className="inline-flex items-center gap-space-4 text-emerald-700 font-semibold">
+                <span className="material-symbols-outlined text-[14px]">verified</span>
+                <span>ECDSA VERIFIED</span>
+              </span>
+            </div>
+          </section>
+
+          {/* 2. Balanced Workflow Grid (12 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-24 items-start">
+            {/* ========================================================================= */}
+            {/* LEFT COLUMN: Product Record & Agent Reasoning (7 cols)                    */}
+            {/* ========================================================================= */}
+            <div className="lg:col-span-7 flex flex-col gap-space-20">
+              {/* Product Card */}
+              <div className="bg-surface-container-lowest rounded-xl shadow-[0_1px_3px_rgba(17,17,16,0.04)] border border-outline-variant/30 overflow-hidden flex flex-col">
+                {/* Top Row: Visual + Specs */}
+                <div className="p-space-20 flex flex-col sm:flex-row gap-space-20 items-start">
+                  <div className="w-full sm:w-28 h-28 rounded-lg overflow-hidden bg-surface-container-low shrink-0 relative border border-outline-variant/20">
+                    <img
+                      alt={product.name}
+                      className="w-full h-full object-cover object-center"
+                      src={product.images[0]}
+                    />
+                  </div>
+
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-space-8">
+                      <span className="font-headline text-headline-sm font-bold text-on-surface tracking-tight truncate">
+                        {product.name}
+                      </span>
+                      <span className="inline-flex items-center px-space-8 py-space-2 rounded bg-surface-container text-on-surface font-mono text-label-sm font-semibold border border-outline-variant/20">
+                        {product.matchScore || 99.2}% Match
+                      </span>
+                    </div>
+                    <p className="font-body text-body-sm text-on-surface-variant mt-space-2">
+                      Running Shoes • Ultralight Daily Road Running
+                    </p>
+
+                    {/* Attribute Chips */}
+                    <div className="flex flex-wrap gap-space-8 mt-space-12">
+                      <span className="px-space-8 py-space-2 rounded bg-surface-container-low text-on-surface-variant font-mono text-label-sm border border-outline-variant/20">
+                        Size: US {product.selectedSize || 9.5}
+                      </span>
+                      <span className="px-space-8 py-space-2 rounded bg-surface-container-low text-on-surface-variant font-mono text-label-sm border border-outline-variant/20">
+                        Chalk &amp; Stone Grey
+                      </span>
+                      <span className="px-space-8 py-space-2 rounded bg-surface-container-low text-on-surface-variant font-mono text-label-sm border border-outline-variant/20">
+                        #SKU-{product.sku || 'RUN-401'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Structured Ledger Segment */}
+                <div className="px-space-20 py-space-16 bg-surface-container-low flex flex-col gap-space-8 text-body-sm font-body border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between text-on-surface-variant">
+                    <span>Catalog List Price</span>
+                    <span className="font-mono text-on-surface">{formatCurrency(product.originalPrice || 2999)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-on-surface-variant">
+                    <span className="inline-flex items-center gap-space-4">
+                      <span>Merchant Offer</span>
+                      <span className="px-space-4 py-0.5 rounded bg-surface-container-highest text-on-surface font-mono text-label-sm font-semibold">
+                        {product.merchantOffer?.code || 'RT-SUMMER200'}
+                      </span>
+                    </span>
+                    <span className="font-mono text-emerald-700 font-semibold">−₹200</span>
+                  </div>
+
+                  <div className="pt-space-8 mt-space-4 flex items-center justify-between font-medium text-on-surface border-t border-outline-variant/20">
+                    <span className="font-bold">Final Settlement</span>
+                    <span className="font-mono text-headline-sm text-on-surface font-bold">
+                      {formatCurrency(amount)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dispatch SLA Bar */}
+                <div className="px-space-20 py-space-12 bg-surface-container-lowest flex items-center gap-space-12 text-on-surface-variant font-body text-body-sm border-t border-outline-variant/20">
+                  <span className="material-symbols-outlined text-[20px] text-secondary">
+                    local_shipping
+                  </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-space-8 min-w-0">
+                    <span className="font-semibold text-on-surface">Express 24h Dispatch</span>
+                    <span className="hidden sm:inline text-outline-variant">•</span>
+                    <span className="text-on-surface-variant truncate">
+                      Expected Delivery: Tomorrow by 2:00 PM (Bangalore Hub 04)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Agent Telemetry & Reasoning Card */}
+              <div className="bg-surface-container-lowest rounded-xl p-space-20 shadow-[0_1px_3px_rgba(17,17,16,0.04)] border border-outline-variant/30 flex flex-col gap-space-16">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-label-sm tracking-wider uppercase text-on-surface-variant font-semibold">
+                    AI Actions &amp; Reasoning Audit
+                  </span>
+                  <span className="inline-flex items-center gap-space-4 px-space-8 py-space-2 rounded bg-surface-container text-emerald-800 font-mono text-label-sm font-semibold border border-outline-variant/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                    Deterministic
+                  </span>
+                </div>
+
+                <p className="font-body text-body-sm text-on-surface leading-relaxed">
+                  ShopPilot selected <span className="font-semibold text-on-surface">AeroRun X</span>{' '}
+                  because it matched your defined budget constraints, road surface preference, active
+                  regional inventory, and merchant discount rules.
+                </p>
+
+                {/* Micro Telemetry Grid */}
+                <div className="grid grid-cols-1 gap-space-8 font-body text-body-sm">
+                  <div className="p-space-12 rounded bg-surface-container-low flex items-start gap-space-12 border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-700 mt-0.5 shrink-0">
+                      check_circle
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-on-surface">Budget adherence</span>
+                      <span className="text-on-surface-variant font-mono text-label-sm">
+                        ₹2,799 settled within ₹3,000 ceiling (₹201 headroom preserved)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-space-12 rounded bg-surface-container-low flex items-start gap-space-12 border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-700 mt-0.5 shrink-0">
+                      check_circle
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-on-surface">Biomechanics evaluation</span>
+                      <span className="text-on-surface-variant font-mono text-label-sm">
+                        High-abrasion road compound verified for daily urban pavement
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-space-12 rounded bg-surface-container-low flex items-start gap-space-12 border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-700 mt-0.5 shrink-0">
+                      check_circle
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-on-surface">Algorithmic promotion</span>
+                      <span className="text-on-surface-variant font-mono text-label-sm">
+                        Incentive RT-SUMMER200 injected without user coupon friction
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-space-12 rounded bg-surface-container-low flex items-start gap-space-12 border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-700 mt-0.5 shrink-0">
+                      check_circle
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-on-surface">Autonomous guardrail</span>
+                      <span className="text-on-surface-variant font-mono text-label-sm">
+                        Floor price lock guaranteed against merchant volatility
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* RIGHT COLUMN: Real-Time Verification Journey (5 cols)                      */}
+            {/* ========================================================================= */}
+            <div className="lg:col-span-5 flex flex-col gap-space-20">
+              <div className="bg-surface-container-lowest rounded-xl p-space-20 shadow-[0_1px_3px_rgba(17,17,16,0.04)] border border-outline-variant/30 flex flex-col">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-space-16 border-b border-surface-container-high">
+                  <div className="flex flex-col">
+                    <span className="font-headline text-headline-sm font-bold text-on-surface">
+                      Purchase journey
+                    </span>
+                    <span className="font-mono text-label-sm text-on-surface-variant">
+                      Deterministic Ledger Stream
+                    </span>
+                  </div>
+                  <span className="px-space-8 py-space-2 rounded bg-surface-container text-emerald-800 font-mono text-label-sm font-semibold border border-outline-variant/20">
+                    7 / 7 Done • 142ms
+                  </span>
+                </div>
+
+                {/* Vertical Micro-Timeline */}
+                <div className="relative pl-space-16 flex flex-col gap-space-16 pt-space-16">
+                  {/* Continuous Line Background */}
+                  <div className="absolute left-[7px] top-4 bottom-4 w-0.5 bg-surface-container-highest" />
+
+                  {/* Step 1 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Intent parsed
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:02
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        Running shoes under ₹3,000 for daily road use
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Product recommended
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:04
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        AeroRun X matched with 99.2% confidence
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Merchant offer verified
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:06
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        RT-SUMMER200 (-₹200) cleared by margin bounds
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Customer authorization
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:10
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        Explicit customer settlement signature granted
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Razorpay order created
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:11
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        Tokenized on TLS 256-bit rail ({orderId})
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 6 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Payment successful
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:43
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant font-mono">
+                        Settlement: {paymentId}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 7 */}
+                  <div className="relative flex items-start gap-space-12">
+                    <div className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 z-10">
+                      <span className="material-symbols-outlined text-[10px]">check</span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-baseline justify-between gap-space-8">
+                        <span className="font-body text-body-sm font-semibold text-on-surface">
+                          Order confirmed
+                        </span>
+                        <span className="font-mono text-label-sm text-on-surface-variant shrink-0">
+                          10:31:44
+                        </span>
+                      </div>
+                      <p className="font-body text-body-sm text-on-surface-variant">
+                        Warehouse dispatch webhook acknowledged
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cryptographic Mini-Badge */}
+                <div className="mt-space-20 p-space-12 rounded bg-surface-container-low flex items-center justify-between gap-space-8 border border-outline-variant/20">
+                  <div className="flex items-center gap-space-8 font-mono text-label-sm text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[16px] text-on-surface">lock</span>
+                    <span>Payload: 0x9e81...a431</span>
+                  </div>
+                  <span className="font-mono text-label-sm text-on-surface font-semibold">
+                    FIPS 140-3 Valid
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Primary Action Bar & Footnote */}
+          <div className="flex flex-col items-center gap-space-20 mt-space-8">
+            {/* Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-space-12 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="w-full sm:w-auto h-11 px-space-24 rounded-lg bg-primary text-on-primary font-body text-body-md font-semibold inline-flex items-center justify-center gap-space-8 hover:bg-primary/90 active:scale-[0.99] transition-all shadow-sm cursor-pointer"
+              >
+                <span>Continue Shopping</span>
+                <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
+              </button>
+
+              <Link
+                to="/agent/trace"
+                className="w-full sm:w-auto h-11 px-space-24 rounded-lg bg-surface-container-lowest text-on-surface font-body text-body-md font-medium inline-flex items-center justify-center gap-space-8 hover:bg-surface-container active:scale-[0.99] transition-all shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-outline-variant/30 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">terminal</span>
+                <span>View Decision Trace</span>
+              </Link>
+            </div>
+
+            {/* Secondary Links */}
+            <div className="flex flex-wrap items-center justify-center gap-space-16 text-body-sm font-body text-on-surface-variant">
+              <button
+                type="button"
+                onClick={() =>
+                  alert('Receipt downloaded: ShopPilot Tax Invoice #SP-1024.pdf (2799 INR Net)')
+                }
+                className="inline-flex items-center gap-space-4 hover:text-on-surface transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">download</span>
+                <span>Download Tax Invoice &amp; Receipt (PDF)</span>
+              </button>
+              <span className="text-outline-variant select-none">•</span>
+              <Link
+                to="/agent/trace"
+                className="inline-flex items-center gap-space-4 hover:text-on-surface transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">terminal</span>
+                <span>Deterministic Audit Trail</span>
+              </Link>
+            </div>
+
+            {/* Ledger Verification Footnote */}
+            <div className="flex flex-col items-center text-center gap-space-4 text-on-surface-variant font-mono text-label-sm pt-space-12">
+              <p>Transaction recorded in the ShopPilot audit trail.</p>
+              <p className="text-on-surface font-medium">
+                Block #8902-D • SHA-256: 0x9e81...a431 • Verified against merchant ledger v2.4
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </PageLayout>
   );
 };
+
 export default PaymentSuccessPage;

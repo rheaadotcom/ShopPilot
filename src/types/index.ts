@@ -134,4 +134,32 @@ export interface PurchaseAuthorization {
   txId: string;
 }
 
+export interface RazorpayOrderResponse {
+  id: string;
+  amount: number;
+  currency: string;
+  receipt: string;
+  keyId: string;
+  simulated: boolean;
+}
+
+export interface PaymentVerificationResult {
+  verified: boolean;
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  timestamp: string;
+  signatureProof: string;
+}
+
+export interface PaymentFailureDetails {
+  reason: string;
+  code?: string;
+  orderId?: string;
+  paymentId?: string;
+  step?: string;
+}
+
+
 

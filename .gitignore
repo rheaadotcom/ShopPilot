@@ -8,6 +8,12 @@ dist/
 .env
 .env.local
 .env.*.local
+server/.env
+server/.env.*.local
+
+# Server artifacts
+server/node_modules/
+server/dist/
 
 # Documentation - do not push
 docs/
