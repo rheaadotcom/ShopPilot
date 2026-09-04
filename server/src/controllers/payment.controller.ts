@@ -8,6 +8,7 @@ export const createOrderHandler = async (req: Request, res: Response): Promise<v
     if (!authorization) {
       res.status(400).json({
         success: false,
+        code: 'MISSING_AUTHORIZATION',
         error: 'Missing customer purchase authorization. Complete /confirm first.',
       });
       return;
@@ -26,8 +27,11 @@ export const createOrderHandler = async (req: Request, res: Response): Promise<v
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to create Razorpay order';
     console.warn('[PaymentController] Create Order Error:', message);
-    res.status(400).json({
+
+    const isAlreadyPaid = message.includes('already verified');
+    res.status(isAlreadyPaid ? 409 : 400).json({
       success: false,
+      code: isAlreadyPaid ? 'ALREADY_PAID' : 'ORDER_CREATION_FAILED',
       error: message,
     });
   }
@@ -41,6 +45,7 @@ export const verifyPaymentHandler = async (req: Request, res: Response): Promise
       res.status(400).json({
         success: false,
         verified: false,
+        code: 'INCOMPLETE_PAYLOAD',
         error: 'Incomplete payment verification payload.',
       });
       return;
@@ -63,6 +68,36 @@ export const verifyPaymentHandler = async (req: Request, res: Response): Promise
     res.status(400).json({
       success: false,
       verified: false,
+      code: 'VERIFICATION_FAILED',
+      error: message,
+    });
+  }
+};
+
+export const getOrderStatusHandler = (req: Request, res: Response): void => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      res.status(400).json({
+        success: false,
+        error: 'Order ID is required',
+      });
+      return;
+    }
+
+    const result = razorpayService.getOrderStatus(orderId);
+    res.status(200).json({
+      success: true,
+      orderId,
+      status: result.status,
+      verified: result.verified,
+      payment: result.payment,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to retrieve order status';
+    res.status(500).json({
+      success: false,
       error: message,
     });
   }

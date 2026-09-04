@@ -35,11 +35,26 @@ export const BOUNDED_COMMERCE_RULES = {
   amountInPaise: 279900, // 2799 * 100 paise
 };
 
+export interface VerifiedOrderRecord {
+  verified: boolean;
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  timestamp: string;
+  signatureProof: string;
+  txId?: string;
+}
+
 export class RazorpayService {
   private keyId: string;
   private keySecret: string;
   private razorpayInstance: Razorpay | null = null;
   private isSimulatedMode: boolean = false;
+
+  // In-memory settlement registry for duplicate payment prevention & status checks
+  private verifiedOrders: Map<string, VerifiedOrderRecord> = new Map();
+  private createdOrders: Map<string, { orderId: string; amount: number; txId: string; createdAt: number }> = new Map();
 
   constructor() {
     this.keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_sandbox_shoppilot';
@@ -107,6 +122,15 @@ export class RazorpayService {
     if (authorization.offerCode && authorization.offerCode !== BOUNDED_COMMERCE_RULES.merchantOffer) {
       throw new Error(`Bounded check failed: Unauthorized offer code '${authorization.offerCode}'.`);
     }
+
+    // Duplicate Payment Check: If this specific session TX has already been verified and paid
+    if (authorization.txId) {
+      for (const record of this.verifiedOrders.values()) {
+        if (record.txId === authorization.txId) {
+          throw new Error('Payment already verified: This authorization has already been settled.');
+        }
+      }
+    }
   }
 
   /**
@@ -136,6 +160,13 @@ export class RazorpayService {
           },
         });
 
+        this.createdOrders.set(order.id, {
+          orderId: order.id,
+          amount: BOUNDED_COMMERCE_RULES.expectedFinalAmount,
+          txId: params.authorization.txId || '9814-DF7B-AG',
+          createdAt: Date.now(),
+        });
+
         return {
           id: order.id,
           amount: order.amount,
@@ -152,6 +183,13 @@ export class RazorpayService {
 
     // 3. Simulated Sandbox Order for local test mode
     const mockOrderId = `order_test_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    this.createdOrders.set(mockOrderId, {
+      orderId: mockOrderId,
+      amount: BOUNDED_COMMERCE_RULES.expectedFinalAmount,
+      txId: params.authorization.txId || '9814-DF7B-AG',
+      createdAt: Date.now(),
+    });
+
     return {
       id: mockOrderId,
       amount: amountInPaise,
@@ -165,19 +203,16 @@ export class RazorpayService {
   /**
    * Verifies Razorpay payment signature using HMAC SHA256
    */
-  public verifyPayment(params: VerifyPaymentParams): {
-    verified: boolean;
-    paymentId: string;
-    orderId: string;
-    amount: number;
-    currency: string;
-    timestamp: string;
-    signatureProof: string;
-  } {
+  public verifyPayment(params: VerifyPaymentParams): VerifiedOrderRecord {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = params;
 
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
       throw new Error('Missing payment verification payload parameters.');
+    }
+
+    // If order already verified, return existing record (Idempotent verification)
+    if (this.verifiedOrders.has(razorpay_order_id)) {
+      return this.verifiedOrders.get(razorpay_order_id)!;
     }
 
     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
@@ -203,7 +238,10 @@ export class RazorpayService {
       throw new Error('Cryptographic signature verification failed: Hash mismatch.');
     }
 
-    return {
+    const createdOrder = this.createdOrders.get(razorpay_order_id);
+    const txId = createdOrder?.txId || '9814-DF7B-AG';
+
+    const verificationRecord: VerifiedOrderRecord = {
       verified: true,
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
@@ -211,6 +249,41 @@ export class RazorpayService {
       currency: BOUNDED_COMMERCE_RULES.currency,
       timestamp: new Date().toISOString(),
       signatureProof: `ECDSA_HMAC_SHA256:${expectedSignature.substring(0, 16)}...`,
+      txId,
+    };
+
+    // Save to verified registry
+    this.verifiedOrders.set(razorpay_order_id, verificationRecord);
+
+    return verificationRecord;
+  }
+
+  /**
+   * Queries payment status for timeout handling and status verification
+   */
+  public getOrderStatus(orderId: string): {
+    status: 'verified' | 'pending' | 'not_found';
+    verified: boolean;
+    payment?: VerifiedOrderRecord;
+  } {
+    if (this.verifiedOrders.has(orderId)) {
+      return {
+        status: 'verified',
+        verified: true,
+        payment: this.verifiedOrders.get(orderId),
+      };
+    }
+
+    if (this.createdOrders.has(orderId)) {
+      return {
+        status: 'pending',
+        verified: false,
+      };
+    }
+
+    return {
+      status: 'not_found',
+      verified: false,
     };
   }
 }

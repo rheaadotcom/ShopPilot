@@ -151,15 +151,132 @@ export interface PaymentVerificationResult {
   currency: string;
   timestamp: string;
   signatureProof: string;
+  signature?: string;
+  message?: string;
+}
+
+export type PaymentState =
+  | 'IDLE'
+  | 'CREATING_ORDER'
+  | 'CHECKOUT_OPEN'
+  | 'PAYMENT_PROCESSING'
+  | 'VERIFYING'
+  | 'VERIFIED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'TIMEOUT'
+  | 'VERIFICATION_FAILED'
+  | 'NETWORK_ERROR'
+  | 'ALREADY_PAID';
+
+export type PaymentErrorCode =
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_CANCELLED'
+  | 'ORDER_CREATION_FAILED'
+  | 'VERIFICATION_FAILED'
+  | 'NETWORK_ERROR'
+  | 'TIMEOUT'
+  | 'ALREADY_PAID'
+  | 'UNCONFIRMED_STATUS';
+
+export interface RecoveryAuditStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'verified' | 'failed' | 'active' | 'warning' | 'pending';
+  code?: string;
 }
 
 export interface PaymentFailureDetails {
   reason: string;
-  code?: string;
+  code: PaymentErrorCode;
   orderId?: string;
   paymentId?: string;
   step?: string;
+  timestamp?: string;
+  canRetry?: boolean;
+  preservedAmount?: number;
+  auditTrail?: RecoveryAuditStep[];
 }
 
+export interface PaymentStatusResponse {
+  success: boolean;
+  status: 'verified' | 'pending' | 'not_found' | 'failed';
+  verified: boolean;
+  orderId: string;
+  payment?: PaymentVerificationResult;
+  message?: string;
+}
 
+// =========================================================================
+// PHASE 8: AGENT TRACE, AUDIT TRAIL & MERCHANT GUARDRAILS
+// =========================================================================
+
+export type AgentTraceEventType =
+  | 'INTENT_RECEIVED'
+  | 'INTENT_PARSED'
+  | 'CATALOG_SEARCH'
+  | 'PRODUCT_EVALUATED'
+  | 'PRODUCT_SELECTED'
+  | 'MERCHANT_RULE_APPLIED'
+  | 'PRICE_CALCULATED'
+  | 'AUTHORIZATION_REQUESTED'
+  | 'CUSTOMER_AUTHORIZED'
+  | 'ORDER_CREATED'
+  | 'PAYMENT_INITIATED'
+  | 'PAYMENT_VERIFICATION'
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_CANCELLED'
+  | 'RECOVERY_STARTED'
+  | 'PAYMENT_RETRIED'
+  | 'PAYMENT_VERIFIED'
+  | 'PURCHASE_SETTLED';
+
+export type TraceEventStatus = 'completed' | 'verified' | 'failed' | 'blocked' | 'pending' | 'bypassed';
+export type TraceActor = 'customer' | 'agent' | 'merchant' | 'gateway' | 'system';
+
+export interface AgentTraceEvent {
+  id: string;
+  stepNumber?: number;
+  timestamp: string;
+  eventType: AgentTraceEventType;
+  title: string;
+  description: string;
+  status: TraceEventStatus;
+  actor: TraceActor;
+  relevantMetadata?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  latencyMs?: number;
+  verificationBadge?: string;
+  explanation?: string;
+}
+
+export interface MerchantPolicyConfig {
+  maxOrderValue: number;
+  allowedCurrency: string;
+  automaticDiscounts: boolean;
+  maxDiscount: number;
+  customerAuthorizationRequired: boolean;
+  paymentMode: string;
+  agentPurchaseAuthority: 'GATED' | 'AUTONOMOUS' | 'DISABLED';
+}
+
+export interface PolicyCheck {
+  id: string;
+  name: string;
+  expected: string;
+  actual: string;
+  passed: boolean;
+  explanation: string;
+}
+
+export interface PolicyEvaluationResult {
+  amount: number;
+  currency: string;
+  checks: PolicyCheck[];
+  allPassed: boolean;
+  outcome: 'AUTHORIZED FOR CHECKOUT' | 'BLOCKED';
+  blockedReason?: string;
+}
 

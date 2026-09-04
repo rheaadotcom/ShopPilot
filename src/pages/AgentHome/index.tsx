@@ -1878,19 +1878,91 @@ export const AgentHomePage: React.FC = () => {
               {/* Tab 2: Decision Trace */}
               {activeModalTab === 'trace' && (
                 <div className="space-y-space-16">
-                  <div className="p-space-16 rounded-xl bg-surface-container-low font-mono text-label-sm text-on-surface-variant border border-outline-variant/30">
-                    <div className="text-on-surface font-bold mb-space-8 flex items-center justify-between">
-                      <span>Trace Inspection: Active Product Match ({activeScenarioKey})</span>
-                      <Link
-                        to="/agent/trace"
-                        className="text-secondary hover:underline text-[12px] font-semibold"
-                      >
-                        Open Full 9-Step Trace →
-                      </Link>
+                  <div className="flex items-center justify-between pb-space-8 border-b border-surface-container">
+                    <div>
+                      <span className="font-headline font-bold text-on-surface text-body-md">
+                        Chronological Agent Reasoning Stream
+                      </span>
+                      <p className="font-body text-[12px] text-on-surface-variant">
+                        Deterministic operations executed for active session #SP-8902
+                      </p>
                     </div>
-                    <pre className="bg-surface-container-lowest p-space-12 rounded-lg overflow-x-auto text-[12px] text-on-surface border border-outline-variant/20">
-                      {JSON.stringify(scenariosData[activeScenarioKey]?.trace || {}, null, 2)}
-                    </pre>
+                    <Link
+                      to="/agent/trace"
+                      className="px-space-12 py-1 rounded bg-secondary text-on-secondary font-mono text-label-sm font-bold flex items-center gap-1 hover:bg-secondary/90 transition-colors"
+                    >
+                      <span>Open Full Trace</span>
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </Link>
+                  </div>
+
+                  {/* Micro-Event Stream */}
+                  <div className="space-y-space-8 font-mono text-label-sm">
+                    {[
+                      {
+                        time: '10:31:02.102',
+                        type: 'INTENT_RECEIVED',
+                        desc: 'Customer request received: “I need running shoes under ₹3,000 for daily running.”',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:02.180',
+                        type: 'INTENT_PARSED',
+                        desc: 'Category: Running Shoes • Ceiling: ≤ ₹3,000.00 • Terrain: Daily Road Running',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:02.420',
+                        type: 'CATALOG_SEARCH',
+                        desc: 'Evaluated 24 candidate SKUs in vector space (k=24, 18ms). 4 within budget.',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:02.611',
+                        type: 'PRODUCT_SELECTED',
+                        desc: 'AeroRun X Daily Road selected (99.2% deterministic match score).',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:03.002',
+                        type: 'MERCHANT_RULE_APPLIED',
+                        desc: 'Applied coupon RT-SUMMER200 (-₹200) within pre-approved margin bounds.',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:03.120',
+                        type: 'PRICE_CALCULATED',
+                        desc: 'Locked final settlement amount at ₹2,799.00 (₹201 headroom preserved).',
+                        status: '✓ Completed',
+                      },
+                      {
+                        time: '10:31:04.510',
+                        type: 'CUSTOMER_AUTHORIZED',
+                        desc: 'Zero-stealth confirmation gate: explicit human approval token required.',
+                        status: '✓ Gated',
+                      },
+                    ].map((step, idx) => (
+                      <div
+                        key={idx}
+                        className="p-space-12 rounded-lg bg-surface-container-low border border-outline-variant/20 flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-space-8">
+                            <span className="text-secondary font-bold">[{step.type}]</span>
+                            <span className="text-on-surface-variant">{step.time}</span>
+                          </div>
+                          <span className="text-emerald-700 font-bold">{step.status}</span>
+                        </div>
+                        <p className="font-body text-[13px] text-on-surface mt-1">{step.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-space-12 rounded-lg bg-surface-container-lowest border border-outline-variant/20 font-mono text-[11px] text-on-surface-variant flex items-center justify-between">
+                    <span>Session ECDSA Digest: 0x9e81...a431</span>
+                    <Link to="/agent/trace" className="text-secondary hover:underline font-bold">
+                      View Cryptographic Proof →
+                    </Link>
                   </div>
                 </div>
               )}
@@ -1898,48 +1970,87 @@ export const AgentHomePage: React.FC = () => {
               {/* Tab 3: Merchant Control Hub */}
               {activeModalTab === 'merchant' && (
                 <div className="space-y-space-20">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-12 text-center">
-                    <div className="p-space-16 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                      <span className="font-label text-label-sm uppercase text-on-surface-variant font-semibold">
-                        Active Agent Sessions
+                  <div>
+                    <span className="font-headline font-bold text-on-surface text-body-md block">
+                      Merchant Guardrails &amp; Policy Control
+                    </span>
+                    <p className="font-body text-[12px] text-on-surface-variant">
+                      Real-time limits and safety boundaries configured for autonomous agent operations
+                    </p>
+                  </div>
+
+                  {/* 3 Principles */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-12">
+                    <div className="p-space-12 rounded-lg bg-surface-container-low border border-outline-variant/20">
+                      <span className="font-mono text-[11px] font-bold text-secondary uppercase block mb-1">
+                        01 — Explainable
                       </span>
-                      <div className="font-mono text-headline-sm text-on-surface font-bold mt-space-4">
-                        12
-                      </div>
+                      <p className="font-body text-[12px] text-on-surface-variant">
+                        Every recommendation has a visible deterministic rationale.
+                      </p>
                     </div>
-                    <div className="p-space-16 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                      <span className="font-label text-label-sm uppercase text-on-surface-variant font-semibold">
-                        Policy Guardrail Breaches
+
+                    <div className="p-space-12 rounded-lg bg-surface-container-low border border-outline-variant/20">
+                      <span className="font-mono text-[11px] font-bold text-secondary uppercase block mb-1">
+                        02 — Bounded
                       </span>
-                      <div className="font-mono text-headline-sm text-tertiary font-bold mt-space-4">
-                        0
-                      </div>
+                      <p className="font-body text-[12px] text-on-surface-variant">
+                        Agent cannot alter product, price, or currency without renewed approval.
+                      </p>
                     </div>
-                    <div className="p-space-16 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                      <span className="font-label text-label-sm uppercase text-on-surface-variant font-semibold">
-                        Avg Intent-to-Paid Time
+
+                    <div className="p-space-12 rounded-lg bg-surface-container-low border border-outline-variant/20">
+                      <span className="font-mono text-[11px] font-bold text-secondary uppercase block mb-1">
+                        03 — Gated
                       </span>
-                      <div className="font-mono text-headline-sm text-secondary font-bold mt-space-4">
-                        42s
+                      <p className="font-body text-[12px] text-on-surface-variant">
+                        Money actions require explicit customer authorization.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Policy Configuration Table */}
+                  <div className="p-space-16 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-space-8 font-mono text-label-sm">
+                    <div className="font-bold text-on-surface text-body-sm pb-1 border-b border-outline-variant/20">
+                      Configured Merchant Policies
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-8">
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Maximum Order Value:</span>
+                        <span className="font-bold text-on-surface">₹3,000</span>
+                      </div>
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Allowed Currency:</span>
+                        <span className="font-bold text-on-surface">INR</span>
+                      </div>
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Automatic Discounts:</span>
+                        <span className="font-bold text-emerald-700">Enabled (Max ₹500)</span>
+                      </div>
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Customer Authorization:</span>
+                        <span className="font-bold text-emerald-700">Required</span>
+                      </div>
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Payment Mode:</span>
+                        <span className="font-bold text-on-surface">Razorpay Test Mode</span>
+                      </div>
+                      <div className="flex items-center justify-between p-space-8 rounded bg-surface-container-lowest">
+                        <span className="text-on-surface-variant">Agent Purchase Authority:</span>
+                        <span className="font-bold text-secondary">GATED</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-space-16 rounded-xl bg-surface-container-low font-body text-body-sm border border-outline-variant/30">
-                    <div className="font-semibold text-on-surface mb-space-8">
-                      Live Guardrail Bounds:
+                  {/* Active Policy Evaluation */}
+                  <div className="p-space-12 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between font-mono text-label-sm">
+                    <div className="flex items-center gap-space-8 text-emerald-900">
+                      <span className="material-symbols-outlined text-emerald-700 text-[18px]">verified</span>
+                      <span>Policy Evaluation: ₹2,799 settlement passes all 7 checks</span>
                     </div>
-                    <ul className="list-disc list-inside text-on-surface-variant space-y-space-4">
-                      <li>
-                        Automatic price discounting floor: <strong>12% maximum</strong>
-                      </li>
-                      <li>
-                        Razorpay Token Verification: <strong>Enforced SHA-256</strong>
-                      </li>
-                      <li>
-                        Stock safety threshold: <strong>Min 2 units before offer release</strong>
-                      </li>
-                    </ul>
+                    <span className="font-bold text-emerald-800 bg-emerald-100 px-space-8 py-0.5 rounded">
+                      AUTHORIZED FOR CHECKOUT
+                    </span>
                   </div>
                 </div>
               )}

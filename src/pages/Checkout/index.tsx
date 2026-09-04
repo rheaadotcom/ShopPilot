@@ -4,25 +4,30 @@ import { PageLayout } from '../../components/layout/PageLayout';
 import { primaryProduct, defaultAgentSession } from '../../data/mockData';
 import { formatCurrency } from '../../lib/utils';
 import { useCart } from '../../features/cart';
+import { PaymentState, PaymentErrorCode } from '../../types';
 import {
   createRazorpayOrder,
   verifyPaymentSignature,
   getPaymentConfig,
+  checkPaymentStatus,
+  PaymentApiError,
 } from '../../services/paymentApi';
-
-type PaymentState =
-  | 'idle'
-  | 'creating_order'
-  | 'opening_gateway'
-  | 'verifying'
-  | 'settled'
-  | 'failed';
 
 type PaymentMethod = 'upi' | 'cards' | 'netbanking';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { authorization, items, total, subtotal, discount, appliedOffer } = useCart();
+  const {
+    authorization,
+    items,
+    total,
+    subtotal,
+    discount,
+    appliedOffer,
+    settledPayment,
+    markPaymentSettled,
+  } = useCart();
+
   const session = defaultAgentSession;
   const primaryItem = items.length > 0 ? items[0] : null;
   const product = primaryItem?.product || primaryProduct;
@@ -33,10 +38,11 @@ export const CheckoutPage: React.FC = () => {
   // VPA Address input
   const [vpaAddress, setVpaAddress] = useState<string>('success@razorpay');
 
-  // Payment execution state
-  const [paymentState, setPaymentState] = useState<PaymentState>('idle');
+  // Typed Payment State Model (Phase 7 Requirement)
+  const [paymentState, setPaymentState] = useState<PaymentState>('IDLE');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [statusCheckMessage, setStatusCheckMessage] = useState<string | null>(null);
 
   // Countdown timer: 14m 28s = 868s
   const [secondsLeft, setSecondsLeft] = useState<number>(868);
@@ -53,6 +59,65 @@ export const CheckoutPage: React.FC = () => {
     const s = secs % 60;
     return `${m}m ${s < 10 ? '0' : ''}${s}s`;
   };
+
+  // =========================================================================
+  // DUPLICATE PAYMENT PROTECTION: IF ALREADY SETTLED
+  // =========================================================================
+  if (settledPayment && settledPayment.verified) {
+    return (
+      <PageLayout>
+        <div className="max-w-xl mx-auto py-space-48">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-space-32 text-center shadow-L1">
+            <div className="w-16 h-16 mx-auto mb-space-20 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center border border-emerald-300">
+              <span className="material-symbols-outlined text-[32px]">verified</span>
+            </div>
+
+            <span className="font-mono text-label-sm uppercase px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 font-semibold">
+              Duplicate Protection: Order Already Settled
+            </span>
+
+            <h1 className="font-headline text-headline-md font-bold text-on-surface mt-space-12 mb-space-8">
+              Payment already verified
+            </h1>
+
+            <p className="font-body text-body-md text-on-surface-variant max-w-md mx-auto mb-space-24 leading-relaxed">
+              This purchase authorization ({settledPayment.orderId}) has already been cryptographically verified and settled for{' '}
+              <strong className="font-mono font-bold text-on-surface">
+                {formatCurrency(settledPayment.amount)}
+              </strong>
+              . Duplicate debits are permanently blocked.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-space-12">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/payment/success', {
+                    state: {
+                      payment: settledPayment,
+                      product,
+                      orderId: settledPayment.orderId,
+                    },
+                  })
+                }
+                className="w-full sm:w-auto px-space-24 py-space-12 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-body text-body-md font-semibold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                View Verified Order Proof
+              </button>
+
+              <Link
+                to="/"
+                className="w-full sm:w-auto px-space-20 py-space-12 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-body text-body-md font-medium transition-colors"
+              >
+                Return to Shop
+              </Link>
+            </div>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
 
   // =========================================================================
   // BOUNDED CHECK: MISSING AUTHORIZATION GUARD
@@ -101,19 +166,133 @@ export const CheckoutPage: React.FC = () => {
   }
 
   // =========================================================================
-  // EXECUTE PAYMENT FLOW (Order Creation -> Gateway / Simulation -> Verification)
+  // SAFE ROUTING HELPER FOR FAILURES (Preserving Authorization & Cart)
   // =========================================================================
-  const handleExecutePayment = async (forceFailure: boolean = false) => {
-    // Idempotency: Prevent duplicate submissions
-    if (paymentState !== 'idle' && paymentState !== 'failed') {
+  const routeToFailure = (
+    code: PaymentErrorCode,
+    reason: string,
+    orderId?: string,
+    technicalDetails?: string
+  ) => {
+    // Crucial Guarantee (Step 2): We NEVER clear authorization here.
+    // The user's cart and authorized purchase remain intact for safe retry.
+    navigate('/payment/failure', {
+      state: {
+        code,
+        reason,
+        orderId: orderId || activeOrderId || session.sessionId,
+        paymentId: undefined,
+        timestamp: new Date().toISOString(),
+        canRetry: code !== 'ALREADY_PAID',
+        preservedAmount: total,
+        technicalDetails,
+      },
+    });
+  };
+
+  // =========================================================================
+  // EXECUTE PAYMENT FLOW
+  // =========================================================================
+  const handleExecutePayment = async (simulationMode?: PaymentErrorCode) => {
+    // Idempotency: Prevent duplicate submissions while in flight
+    if (
+      paymentState === 'CREATING_ORDER' ||
+      paymentState === 'CHECKOUT_OPEN' ||
+      paymentState === 'PAYMENT_PROCESSING' ||
+      paymentState === 'VERIFYING'
+    ) {
       return;
     }
 
-    setPaymentState('creating_order');
+    setPaymentState('CREATING_ORDER');
     setErrorMessage(null);
+    setStatusCheckMessage(null);
+
+    // Explicit developer simulation branch if triggered
+    if (simulationMode === 'PAYMENT_CANCELLED') {
+      setTimeout(() => {
+        routeToFailure(
+          'PAYMENT_CANCELLED',
+          'Checkout was cancelled. No successful payment was verified.',
+          activeOrderId || 'order_sim_cancel'
+        );
+      }, 500);
+      return;
+    }
+
+    if (simulationMode === 'PAYMENT_FAILED' || vpaAddress === 'failure@razorpay') {
+      setTimeout(() => {
+        routeToFailure(
+          'PAYMENT_FAILED',
+          'Issuing bank session expired • OTP not authenticated in window',
+          activeOrderId || 'order_sim_fail'
+        );
+      }, 600);
+      return;
+    }
+
+    if (simulationMode === 'TIMEOUT') {
+      setPaymentState('TIMEOUT');
+      setStatusCheckMessage('Upstream gateway response delayed. Querying status from backend...');
+
+      setTimeout(async () => {
+        const dummyOrderId = activeOrderId || `order_test_${Date.now()}`;
+        const statusRes = await checkPaymentStatus(dummyOrderId);
+
+        if (statusRes.verified && statusRes.payment) {
+          markPaymentSettled(statusRes.payment);
+          navigate('/payment/success', {
+            state: {
+              payment: statusRes.payment,
+              product,
+              orderId: dummyOrderId,
+            },
+          });
+        } else {
+          routeToFailure(
+            'TIMEOUT',
+            'We couldn’t confirm the payment status yet. We’re checking the transaction before allowing another attempt.',
+            dummyOrderId
+          );
+        }
+      }, 1200);
+      return;
+    }
+
+    if (simulationMode === 'VERIFICATION_FAILED') {
+      setPaymentState('VERIFYING');
+      setTimeout(async () => {
+        try {
+          // Intentionally send forged signature to backend verify API
+          await verifyPaymentSignature({
+            razorpay_payment_id: 'pay_test_forged',
+            razorpay_order_id: activeOrderId || `order_test_${Date.now()}`,
+            razorpay_signature: 'invalid_forged_hash_payload',
+          });
+        } catch (err: unknown) {
+          routeToFailure(
+            'VERIFICATION_FAILED',
+            'The payment could not be verified. Cryptographic hash mismatch.',
+            activeOrderId || 'order_sim_verify_fail'
+          );
+        }
+      }, 700);
+      return;
+    }
+
+    if (simulationMode === 'NETWORK_ERROR') {
+      setTimeout(() => {
+        routeToFailure(
+          'NETWORK_ERROR',
+          'Network connectivity issue detected. We preserved your cart so you can safely retry.',
+          activeOrderId || 'order_sim_net'
+        );
+      }, 500);
+      return;
+    }
 
     try {
-      // Step 1: Create Razorpay Order via Backend
+      // Step 1: Create Razorpay Order on Backend
       const order = await createRazorpayOrder({
         authorization,
         productId: product.id,
@@ -122,28 +301,14 @@ export const CheckoutPage: React.FC = () => {
 
       setActiveOrderId(order.id);
 
-      // If user simulated failure via profile
-      if (forceFailure || vpaAddress === 'failure@razorpay') {
-        setTimeout(() => {
-          navigate('/payment/failure', {
-            state: {
-              reason: 'Issuing bank session expired • OTP not authenticated in window',
-              code: 'BAD_REQUEST_ERROR',
-              orderId: order.id,
-              step: 'gateway_payment',
-            },
-          });
-        }, 1000);
-        return;
-      }
-
-      // Step 2: Check backend config and window.Razorpay availability
+      // Step 2: Check backend configuration
       const config = await getPaymentConfig().catch(() => ({
         simulated: true,
         keyId: order.keyId,
+        network: 'Razorpay Test Network',
       }));
 
-      // If Razorpay SDK is available and we have a valid key (not simulated sandbox)
+      // Check if real Razorpay Checkout modal can be launched
       const canUseRealSdk =
         typeof window !== 'undefined' &&
         window.Razorpay &&
@@ -153,7 +318,7 @@ export const CheckoutPage: React.FC = () => {
         !order.keyId.includes('sandbox');
 
       if (canUseRealSdk && window.Razorpay) {
-        setPaymentState('opening_gateway');
+        setPaymentState('CHECKOUT_OPEN');
 
         const options = {
           key: order.keyId,
@@ -176,7 +341,7 @@ export const CheckoutPage: React.FC = () => {
             razorpay_order_id: string;
             razorpay_signature: string;
           }) => {
-            setPaymentState('verifying');
+            setPaymentState('VERIFYING');
             try {
               const verifyResult = await verifyPaymentSignature({
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -184,7 +349,9 @@ export const CheckoutPage: React.FC = () => {
                 razorpay_signature: response.razorpay_signature,
               });
 
-              setPaymentState('settled');
+              setPaymentState('VERIFIED');
+              markPaymentSettled(verifyResult);
+
               setTimeout(() => {
                 navigate('/payment/success', {
                   state: {
@@ -193,46 +360,49 @@ export const CheckoutPage: React.FC = () => {
                     orderId: order.id,
                   },
                 });
-              }, 800);
+              }, 600);
             } catch (vErr: unknown) {
-              navigate('/payment/failure', {
-                state: {
-                  reason: vErr instanceof Error ? vErr.message : 'Signature verification failed',
-                  orderId: order.id,
-                  paymentId: response.razorpay_payment_id,
-                  step: 'backend_verification',
-                },
-              });
+              routeToFailure(
+                'VERIFICATION_FAILED',
+                vErr instanceof Error ? vErr.message : 'Signature verification failed',
+                order.id
+              );
             }
           },
           modal: {
             ondismiss: () => {
-              setPaymentState('idle');
+              // User cancelled / closed the checkout modal
+              setPaymentState('CANCELLED');
+              routeToFailure(
+                'PAYMENT_CANCELLED',
+                'Checkout was cancelled. No successful payment was verified.',
+                order.id
+              );
             },
           },
         };
 
         const rzp = new window.Razorpay(options);
         rzp.on('payment.failed', (failResp) => {
-          navigate('/payment/failure', {
-            state: {
-              reason: failResp.error?.description || 'Payment rejected by payment gateway',
-              code: failResp.error?.code,
-              orderId: order.id,
-              step: 'gateway_rejection',
-            },
-          });
+          setPaymentState('FAILED');
+          routeToFailure(
+            'PAYMENT_FAILED',
+            failResp.error?.description || 'Payment rejected by payment gateway',
+            order.id
+          );
         });
+
         rzp.open();
         return;
       }
 
-      // Step 3: Stitch-Faithful Sandbox Gateway Terminal Simulation
-      // Emulates the exact webhook & HMAC handshake modeled in the Stitch prototype
-      setPaymentState('settled');
+      // Step 3: Stitch-Faithful Sandbox Gateway Terminal Settlement
+      setPaymentState('PAYMENT_PROCESSING');
 
       setTimeout(async () => {
         try {
+          setPaymentState('VERIFYING');
+
           const mockPaymentId = `pay_test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
           const mockSig = `sig_test_verified_${Math.random().toString(36).substring(2, 8)}`;
 
@@ -242,6 +412,9 @@ export const CheckoutPage: React.FC = () => {
             razorpay_signature: mockSig,
           });
 
+          setPaymentState('VERIFIED');
+          markPaymentSettled(verifyResult);
+
           setTimeout(() => {
             navigate('/payment/success', {
               state: {
@@ -250,24 +423,36 @@ export const CheckoutPage: React.FC = () => {
                 orderId: order.id,
               },
             });
-          }, 1000);
+          }, 800);
         } catch (verifyError: unknown) {
-          navigate('/payment/failure', {
-            state: {
-              reason:
-                verifyError instanceof Error
-                  ? verifyError.message
-                  : 'Backend HMAC verification failed',
-              orderId: order.id,
-              step: 'signature_verification',
-            },
-          });
+          routeToFailure(
+            'VERIFICATION_FAILED',
+            verifyError instanceof Error ? verifyError.message : 'Backend HMAC verification failed',
+            order.id
+          );
         }
-      }, 1500);
+      }, 1200);
     } catch (err: unknown) {
+      if (err instanceof PaymentApiError && err.code === 'ALREADY_PAID') {
+        setPaymentState('ALREADY_PAID');
+        routeToFailure('ALREADY_PAID', 'This order has already been verified and settled.');
+        return;
+      }
+
+      if (err instanceof PaymentApiError && err.code === 'TIMEOUT') {
+        setPaymentState('TIMEOUT');
+        routeToFailure(
+          'TIMEOUT',
+          'We couldn’t confirm the payment status yet. We’re checking the transaction before allowing another attempt.'
+        );
+        return;
+      }
+
+      const isNetwork = err instanceof PaymentApiError && err.code === 'NETWORK_ERROR';
       const msg = err instanceof Error ? err.message : 'Failed to initialize payment order';
       setErrorMessage(msg);
-      setPaymentState('failed');
+      setPaymentState(isNetwork ? 'NETWORK_ERROR' : 'FAILED');
+      routeToFailure(isNetwork ? 'NETWORK_ERROR' : 'ORDER_CREATION_FAILED', msg);
     }
   };
 
@@ -493,9 +678,14 @@ export const CheckoutPage: React.FC = () => {
                     Gateway Terminal
                   </span>
                 </div>
-                <span className="font-mono text-label-sm px-space-8 py-space-2 rounded bg-surface-container-high text-on-surface-variant font-medium">
-                  Test Stage
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">
+                    STATE: {paymentState}
+                  </span>
+                  <span className="font-mono text-label-sm px-space-8 py-space-2 rounded bg-surface-container-high text-on-surface-variant font-medium">
+                    Test Stage
+                  </span>
+                </div>
               </div>
 
               {/* Total Payable */}
@@ -548,7 +738,7 @@ export const CheckoutPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Active Form Body: UPI Mock Engine */}
+              {/* Active Form Body */}
               <div className="pt-space-24 space-y-space-20">
                 {selectedMethod === 'upi' && (
                   <>
@@ -664,29 +854,34 @@ export const CheckoutPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Primary Execute CTA */}
+                {/* Primary Execute CTA (Disabled during processing for idempotency) */}
                 <button
                   id="pay-btn"
                   type="button"
-                  disabled={paymentState !== 'idle' && paymentState !== 'failed'}
-                  onClick={() => handleExecutePayment(false)}
+                  disabled={
+                    paymentState === 'CREATING_ORDER' ||
+                    paymentState === 'CHECKOUT_OPEN' ||
+                    paymentState === 'PAYMENT_PROCESSING' ||
+                    paymentState === 'VERIFYING'
+                  }
+                  onClick={() => handleExecutePayment()}
                   className="w-full h-12 bg-primary text-on-primary font-headline text-body-lg rounded-lg flex items-center justify-center gap-space-8 hover:bg-primary/90 active:scale-[0.99] transition-all shadow-md group cursor-pointer disabled:opacity-60"
                 >
-                  {paymentState === 'creating_order' ? (
+                  {paymentState === 'CREATING_ORDER' ? (
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">
                         autorenew
                       </span>
                       <span>Creating Razorpay Order...</span>
                     </div>
-                  ) : paymentState === 'opening_gateway' ? (
+                  ) : paymentState === 'CHECKOUT_OPEN' ? (
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">
                         lock_clock
                       </span>
                       <span>Awaiting Razorpay Checkout...</span>
                     </div>
-                  ) : paymentState === 'verifying' || paymentState === 'settled' ? (
+                  ) : paymentState === 'PAYMENT_PROCESSING' || paymentState === 'VERIFYING' ? (
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">
                         sync
@@ -705,8 +900,10 @@ export const CheckoutPage: React.FC = () => {
                   )}
                 </button>
 
-                {/* Inline Verification State Feedback (Stitch element #settlement-status) */}
-                {(paymentState === 'verifying' || paymentState === 'settled') && (
+                {/* Status Check / Webhook Feedback */}
+                {(paymentState === 'VERIFYING' ||
+                  paymentState === 'PAYMENT_PROCESSING' ||
+                  statusCheckMessage) && (
                   <div
                     id="settlement-status"
                     className="p-space-16 rounded-lg bg-surface-container flex items-center gap-space-12 border border-outline-variant/30 animate-fadeIn"
@@ -714,7 +911,7 @@ export const CheckoutPage: React.FC = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-ping" />
                     <div className="flex-1">
                       <div className="font-headline text-body-sm text-on-surface font-semibold">
-                        Broadcasting Test Webhook...
+                        {statusCheckMessage || 'Broadcasting Test Webhook...'}
                       </div>
                       <div className="font-mono text-label-sm text-on-surface-variant">
                         HMAC SHA-256 handshake in progress
@@ -763,6 +960,73 @@ export const CheckoutPage: React.FC = () => {
                   </div>
                   <span className="text-on-surface font-medium">200 OK • Validated</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Phase 7 Test Scenario Simulation Controls Toolbar */}
+            <div className="mt-4 p-4 rounded-xl bg-surface-container-high/60 border border-dashed border-outline-variant/60 font-mono text-[11px] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px] text-secondary">bug_report</span>
+                  Phase 7 Reliability Simulator
+                </span>
+                <span className="text-[10px] text-on-surface-variant font-semibold bg-surface-container px-2 py-0.5 rounded">
+                  TEST ONLY
+                </span>
+              </div>
+
+              <p className="text-[11px] text-on-surface-variant font-body leading-tight">
+                Simulate different edge cases to verify non-debit guarantees and authorization recovery:
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment()}
+                  className="px-2.5 py-1.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ✓ Success (Settled)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment('PAYMENT_FAILED')}
+                  className="px-2.5 py-1.5 rounded bg-error/10 hover:bg-error/20 text-error border border-error/30 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ✗ Bank Reject
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment('PAYMENT_CANCELLED')}
+                  className="px-2.5 py-1.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ⚠ User Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment('TIMEOUT')}
+                  className="px-2.5 py-1.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ⏱ Timeout Check
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment('VERIFICATION_FAILED')}
+                  className="px-2.5 py-1.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ⚿ Bad Hash Proof
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExecutePayment('NETWORK_ERROR')}
+                  className="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-highest text-on-surface border border-outline-variant/40 transition-colors font-semibold text-center cursor-pointer"
+                >
+                  ⚡ Network Drop
+                </button>
               </div>
             </div>
           </div>

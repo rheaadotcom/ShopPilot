@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Product, MerchantOffer, PurchaseAuthorization, PriceLedger } from '../../types';
+import { CartItem, Product, MerchantOffer, PurchaseAuthorization, PriceLedger, PaymentVerificationResult } from '../../types';
 import { primaryProduct, mockOffer, PRIMARY_CUSTOMER_INTENT } from '../../data/mockData';
 
 export interface CartContextValue {
@@ -7,6 +7,7 @@ export interface CartContextValue {
   appliedOffer: MerchantOffer | null;
   customerIntent: string;
   authorization: PurchaseAuthorization | null;
+  settledPayment: PaymentVerificationResult | null;
   subtotal: number;
   discount: number;
   shipping: number;
@@ -19,7 +20,9 @@ export interface CartContextValue {
   resetDefaultCart: () => void;
   authorizePurchase: () => PurchaseAuthorization;
   clearAuthorization: () => void;
+  markPaymentSettled: (payment: PaymentVerificationResult) => void;
 }
+
 
 const defaultCartItem: CartItem = {
   id: 'cart-item-aerorun-x',
@@ -159,12 +162,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([defaultCartItem]);
     setAppliedOffer(mockOffer);
     setAuthorization(null);
+    setSettledPayment(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_SETTLED);
+    } catch {
+      // ignore
+    }
   };
 
   const authorizePurchase = (): PurchaseAuthorization => {
     if (items.length === 0) {
       throw new Error('Cannot authorize purchase: Cart is empty.');
     }
+
+    setSettledPayment(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY_SETTLED);
+    } catch {
+      // ignore
+    }
+
 
     const primary = items[0];
     const newAuth: PurchaseAuthorization = {
@@ -184,6 +201,29 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newAuth;
   };
 
+  // Settled Payment state - prevents duplicate payments
+  const STORAGE_KEY_SETTLED = 'shoppilot_settled_payment_v1';
+  const [settledPayment, setSettledPayment] = useState<PaymentVerificationResult | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SETTLED);
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to parse settled payment from localStorage:', e);
+    }
+    return null;
+  });
+
+  const markPaymentSettled = (payment: PaymentVerificationResult) => {
+    setSettledPayment(payment);
+    try {
+      localStorage.setItem(STORAGE_KEY_SETTLED, JSON.stringify(payment));
+    } catch (e) {
+      console.warn('Failed to save settled payment to localStorage:', e);
+    }
+  };
+
   const clearAuthorization = () => {
     setAuthorization(null);
   };
@@ -195,6 +235,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         appliedOffer,
         customerIntent,
         authorization,
+        settledPayment,
         subtotal,
         discount,
         shipping,
@@ -207,6 +248,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetDefaultCart,
         authorizePurchase,
         clearAuthorization,
+        markPaymentSettled,
       }}
     >
       {children}

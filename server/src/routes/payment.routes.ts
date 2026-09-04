@@ -3,6 +3,7 @@ import {
   createOrderHandler,
   verifyPaymentHandler,
   getConfigHandler,
+  getOrderStatusHandler,
 } from '../controllers/payment.controller.js';
 
 const router = Router();
@@ -12,6 +13,9 @@ router.post('/create-order', createOrderHandler);
 
 // POST /api/payments/verify
 router.post('/verify', verifyPaymentHandler);
+
+// GET /api/payments/status/:orderId
+router.get('/status/:orderId', getOrderStatusHandler);
 
 // GET /api/payments/config
 router.get('/config', getConfigHandler);
