@@ -1,375 +1,561 @@
-# ShopPilot — AI Commerce Agent
+🛍️ ShopPilot — AI Commerce Agent
 
-> From customer intent to explainable, policy-aware checkout.
+From customer intent to explainable, policy-aware checkout.
 
-ShopPilot is an AI‑powered commerce agent that transforms natural‑language shopping requests into a guided, explainable, and policy‑aware purchase journey.
+ShopPilot is an AI commerce agent prototype that turns a natural-language shopping request into a guided shopping journey — from intent understanding and product recommendation to merchant offers, customer approval, and Razorpay Test Mode checkout.
 
-Instead of forcing customers to search through multiple products, compare prices manually, discover offers, and navigate a traditional checkout flow, ShopPilot understands the customer's intent, identifies the best product match, applies eligible merchant offers, optimizes the basket within spending boundaries, asks for explicit approval, and completes the payment through Razorpay Test Mode.
+The project focuses on a key idea:
 
-The project demonstrates how an AI commerce agent can combine:
+Commerce should feel like a conversation, not a search form.
 
-- Natural‑language customer intent
-- Product recommendation
-- Explainable AI decisions
-- Deterministic pricing and settlement
-- Merchant offers
-- Budget‑aware basket optimization
-- Merchant guardrails
-- Customer approval gates
-- Payment processing
-- Failure recovery
-- Agent execution tracing
-- Revenue intelligence
-- A deterministic live demo
+Instead of making customers search, filter, compare, hunt for offers, and navigate checkout manually, ShopPilot demonstrates how an agent can coordinate these steps while keeping recommendations explainable, bounded by merchant rules, and gated by customer approval.
 
----
+✨ Why ShopPilot?
 
-## 🚀 What Problem Does ShopPilot Solve?
+Traditional e-commerce
 
-Traditional e‑commerce makes the customer perform many steps:
+Search → Filters → Compare → Reviews → Offers → Cart → Checkout → Payment
 
-1. Understand what they need
-2. Search products
-3. Filter by price
-4. Compare alternatives
-5. Check ratings/specifications
-6. Search for discounts
-7. Apply offers
-8. Decide whether recommendations are trustworthy
-9. Add products to cart
-10. Checkout
-11. Make payment
+ShopPilot
 
-This creates friction and makes the shopping journey fragmented.
+Natural-language intent
+        ↓
+Understand requirements
+        ↓
+Find & rank products
+        ↓
+Explain recommendation
+        ↓
+Apply eligible merchant offer
+        ↓
+Validate policy & price
+        ↓
+Ask for customer approval
+        ↓
+Razorpay Test Mode checkout
 
-ShopPilot changes this model.
+The goal is not to remove customer control.
+The goal is to remove unnecessary decision-making friction while keeping important actions under explicit control.
 
-The customer can provide a request such as:
+🎯 Example
 
-> "I need running shoes under ₹3,000 for daily running."
+A customer can simply say:
 
-The agent interprets the request and converts it into structured constraints:
+"I need running shoes under ₹3,000 for daily running."
 
-- Category: Running Shoes
-- Budget ceiling: ₹3,000
-- Use case: Daily Road Running
-- Availability requirement
-- Rating requirements
+ShopPilot converts that request into structured shopping constraints:
 
-It then finds the strongest product match, explains why it was selected, applies an eligible merchant offer, and presents a deterministic settlement amount.
+Constraint
 
-The agent can also identify a relevant complementary product, but it does **not** automatically add it or charge the customer. The customer must explicitly approve the recommendation.
+Value
 
-This creates a commerce experience that is:
+Category
 
-**Intent‑driven + Explainable + Bounded + Customer‑controlled**
+Running Shoes
 
----
+Budget ceiling
 
-## 🎯 Core Value Proposition
+₹3,000
 
-ShopPilot is designed around three principles:
+Use case
 
-### 1. Explainable
-The customer can inspect why a product was selected.
+Daily Road Running
 
-The system exposes:
-- Customer intent
-- Extracted constraints
-- Product match score
-- Recommendation rationale
-- Offer applied
-- Price calculation
-- Agent execution trace
+Availability
 
-### 2. Bounded
-The AI does not have unlimited purchasing authority.
+Required
 
-Merchant policies define boundaries such as:
-- Maximum basket value
-- Maximum discount
-- Upselling enabled/disabled
-- Cross‑selling enabled/disabled
-- Automatic offer application
-- Payment approval requirements
+Rating
 
-### 3. Gated
-Important actions require explicit customer approval.
+Considered during matching
 
-For example, when the AI discovers a complementary product, it presents the recommendation first.
+The agent then presents the strongest product match, explains the decision, applies an eligible merchant offer, and calculates a deterministic checkout amount.
 
-The customer can choose:
+🏗️ System Architecture
 
-**Add to basket**
+The application is intentionally designed as a hackathon-ready client application with a lightweight Node/Express payment integration.
 
-or
+flowchart TB
+    U[👤 Customer]
 
-**Keep current basket**
+    subgraph FE["Frontend — React + TypeScript + Vite"]
+        UI["ShopPilot UI<br/>AI Agent • Recommendation • Confirm • Checkout • Decision Trace"]
 
-No autonomous purchase is made without the appropriate approval.
+        DF["DemoFlowProvider<br/>Deterministic demo state machine"]
+        CC["CartContext<br/>Cart • Authorization • Checkout state"]
 
----
+        DATA["mockData.ts<br/>Products • Offers • Demo Orders • Scenarios"]
+        PE["policyEngine.ts<br/>Merchant guardrails & approval rules"]
+        RA["revenueAnalytics.ts<br/>Revenue & basket metrics"]
 
-## 🧠 How ShopPilot Works
+        UI --> DF
+        UI --> CC
+        DF --> DATA
+        DF --> PE
+        DF --> RA
+        CC --> DATA
+        CC --> PE
+    end
 
-The complete flow is:
+    subgraph BE["Backend — Node.js + Express + TypeScript"]
+        PROXY["Thin Razorpay integration / proxy"]
+    end
 
-```text
+    RP["Razorpay Test Mode<br/>Sandbox Payment"]
+
+    U --> UI
+    CC -->|Approved checkout| PROXY
+    PROXY --> RP
+    RP -->|Payment result| PROXY
+    PROXY --> CC
+
+    DF -->|Trace events| UI
+    DATA --> RA
+
+Architecture at a glance
+
+Customer Layer
+The customer interacts with ShopPilot through a conversational-style shopping interface.
+
+Demo Orchestration Layer
+DemoFlowProvider uses a deterministic state machine to drive the complete demo flow.
+
+Commerce State Layer
+CartContext manages cart items, offers, customer authorization, totals, and payment state.
+
+Data Layer
+src/data/mockData.ts acts as the single source of truth for the demo catalog, offers, orders, and scenarios.
+
+Policy Layer
+src/lib/policyEngine.ts validates merchant-defined boundaries before important actions.
+
+Analytics Layer
+src/lib/revenueAnalytics.ts derives revenue and basket metrics from the deterministic demo order data.
+
+Payment Layer
+Razorpay Test Mode is invoked only after the required customer approval.
+
+🧠 Core Execution Flow
+
+flowchart LR
+    A["Customer Intent"] --> B["Intent Understanding"]
+    B --> C["Constraint Extraction"]
+    C --> D["Catalog / Product Data"]
+    D --> E["Product Matching"]
+    E --> F["Explainable Recommendation"]
+    F --> G["Merchant Offer"]
+    G --> H["Deterministic Price Ledger"]
+    H --> I["Basket Optimization"]
+    I --> J["Policy Check"]
+    J --> K{"Customer Approval"}
+    K -->|Approved| L["Checkout"]
+    K -->|Rejected| M["Keep Current Basket"]
+    L --> N["Razorpay Test Mode"]
+    N --> O{"Payment Result"}
+    O -->|Success| P["Payment Verified"]
+    O -->|Failure| Q["Failure / Recovery"]
+    P --> R["Revenue Intelligence"]
+
+🛡️ Trust & Safety Model
+
+ShopPilot is built around three principles:
+
+1. 🔍 Explainable
+
+The interface exposes why a product was selected instead of presenting an unexplained recommendation.
+
+The decision trace can surface:
+
+Customer intent
+
+Extracted constraints
+
+Product match score
+
+Recommendation rationale
+
+Offer applied
+
+Price calculation
+
+Agent execution steps
+
+2. 🔒 Bounded
+
+The agent operates within merchant-defined boundaries such as:
+
+Maximum basket value
+
+Maximum discount
+
+Upselling rules
+
+Cross-selling rules
+
+Offer eligibility
+
+Payment approval requirements
+
+3. ✅ Gated
+
+Important monetary actions require explicit customer approval.
+
+For example, when ShopPilot identifies a complementary product, it can present the recommendation without silently purchasing it.
+
+The customer remains in control:
+
+Add to Basket
+      OR
+Keep Current Basket
+
+No autonomous purchase is performed without the required approval.
+
+💳 Payment Flow
+
+ShopPilot integrates Razorpay Test Mode for the checkout demonstration.
+
+sequenceDiagram
+    participant C as Customer
+    participant UI as ShopPilot UI
+    participant Cart as CartContext
+    participant API as Node/Express
+    participant R as Razorpay Test Mode
+
+    C->>UI: Approve purchase
+    UI->>Cart: authorizePurchase()
+    Cart-->>UI: Purchase authorization
+    UI->>API: Start test checkout
+    API->>R: Create / process test payment flow
+    R-->>API: Payment result
+    API-->>UI: Result
+    UI->>Cart: markPaymentSettled()
+    UI-->>C: Success / Failure state
+
+Important: The project uses Razorpay Test Mode. No real customer transaction is performed.
+
+🧩 Technology Stack
+
+Frontend
+
+Technology
+
+Purpose
+
+React 18
+
+UI and component architecture
+
+TypeScript
+
+Static typing and safer application code
+
+Vite
+
+Development server and build tooling
+
+React Router v6
+
+Client-side routing
+
+Context API
+
+Shared cart and demo-flow state
+
+Vanilla CSS
+
+Custom UI and Stitch-inspired design system
+
+Frontend state
+
+CartContext — cart, totals, authorization, payment state
+
+DemoFlowProvider — deterministic demo state machine
+
+useDemoFlow — access to demo execution state
+
+useCart — access to commerce/cart state
+
+Backend
+
+Technology
+
+Purpose
+
+Node.js
+
+Backend runtime
+
+Express
+
+Lightweight HTTP server / integration layer
+
+TypeScript
+
+Backend type safety
+
+dotenv / .env
+
+Environment configuration
+
+The backend is intentionally lightweight and primarily supports the Razorpay Test Mode integration.
+
+Data & Business Logic
+
+Module
+
+Responsibility
+
+src/data/mockData.ts
+
+Demo products, offers, orders and scenarios
+
+src/lib/policyEngine.ts
+
+Merchant guardrails and policy validation
+
+src/lib/revenueAnalytics.ts
+
+Revenue, conversion and basket metrics
+
+src/features/cart/CartContext.tsx
+
+Cart and checkout state
+
+useDemoFlow.ts
+
+Deterministic demo orchestration
+
+Storage
+
+The current prototype does not use a database.
+
+Demo catalog and scenarios → mockData.ts
+
+Cart persistence → browser localStorage
+
+Demo revenue metrics → derived from demoOrders
+
+Merchant policy state → browser localStorage
+
+🔄 Deterministic Demo State Machine
+
+The live demo is driven by DemoFlowProvider.
+
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> INTENT
+    INTENT --> UNDERSTANDING
+    UNDERSTANDING --> RECOMMENDATION
+    RECOMMENDATION --> OFFER
+    OFFER --> OPTIMIZATION
+    OPTIMIZATION --> POLICY_CHECK
+    POLICY_CHECK --> APPROVAL
+    APPROVAL --> CHECKOUT
+    CHECKOUT --> PAYMENT
+    PAYMENT --> SUCCESS
+    PAYMENT --> FAILED
+    SUCCESS --> IDLE
+    FAILED --> IDLE
+
+This makes the live demonstration predictable and repeatable while still presenting the experience of an AI commerce workflow.
+
+📊 Decision Trace
+
+One of ShopPilot's main differentiators is the Agent Activity & Decision Trace.
+
+The dashboard records the sequence of decisions made during a session, allowing the user or evaluator to inspect how the system moved from:
+
 Customer Intent
       ↓
-Intent Understanding
+Constraints
       ↓
-Constraint Extraction
+Product Evaluation
       ↓
-Catalog Retrieval
+Recommendation
       ↓
-Product Matching
+Offer
       ↓
-Explainable Recommendation
-      ↓
-Merchant Offer
-      ↓
-Deterministic Price Ledger
-      ↓
-Basket Optimization
-      ↓
-Merchant Policy Check
+Policy Validation
       ↓
 Customer Approval
       ↓
 Checkout
       ↓
-Razorpay Test Mode
-      ↓
-Payment Verification
-      ↓
-Success / Failure Recovery
-      ↓
-Revenue Intelligence
-```
+Payment Result
 
----
+This is especially useful for demonstrating explainability, auditability, and controlled agent execution.
 
-## 🏗️ Architecture & Technology Stack
+💡 Key Features
 
-**Frontend**
-- **React 18** with functional components and hooks
-- **TypeScript** for static typing
-- **Vite** as the build tool and development server (`npm run dev`)
-- **Vanilla CSS** implementing the custom *Stitch* design system (no Tailwind or external UI libraries)
-- **React Router v6** for client‑side routing
-- **Context API**:
-  - `CartContext` – manages cart state, Razorpay checkout, and order persistence
-  - `DemoFlowProvider` (via `useDemoFlow` hook) – deterministic state machine that drives the live demo
-- **UI Components**: `RunLiveDemoButton`, `DemoControls`, `DemoSummary` – all styled consistently with the existing design tokens
+🗣️ Natural-language shopping intent
 
-**Backend**
-- **Node.js** with **Express** (written in TypeScript) serving static assets and providing a thin proxy for Razorpay Test Mode integration
-- Environment configuration via `.env` (Razorpay test keys are loaded here)
+🎯 Constraint-based product matching
 
-**Data Layer**
-- **`src/data/mockData.ts`** – single source of truth for product catalog, deterministic `demoOrders`, and demo scenarios. No database is used.
-- **Revenue Analytics** (`src/lib/revenueAnalytics.ts`) – derives KPIs (total revenue, AI‑assisted orders, basket uplift, conversion rate, etc.) directly from `demoOrders`.
-- **Policy Engine** (`src/lib/policyEngine.ts`) – synchronous client‑side validation of merchant guardrails, persisted in `localStorage`.
+🔎 Product recommendation
 
-**Payments**
-- **Razorpay Test Mode** – client‑side checkout flow using Razorpay’s sandbox credentials. No real transactions are performed.
+💬 Explainable recommendation rationale
 
-**Demo Flow**
-- The deterministic flow is orchestrated by `useDemoFlow` (state machine with states like `IDLE → INTENT → … → SUCCESS`).
-- UI components subscribe to this context to render appropriate screens and controls.
-- `DemoSummary` displays the calculated revenue intelligence metrics after a successful demo run.
+🏷️ Merchant-approved offers
 
-**Overall Architecture**
-1. **User Interaction** → UI component triggers demo via `RunLiveDemoButton`.
-2. **DemoFlowProvider** updates state machine, driving the sequence of actions.
-3. **Hooks & Contexts** fetch data from `mockData.ts`, apply the **policy engine**, and compute **revenue analytics**.
-4. **Razorpay Checkout** is invoked only after explicit customer approval.
-5. **Agent Trace** logs each step for visibility on the merchant dashboard.
-6. **Result** – a fully explainable, policy‑aware checkout experience showcased in a single click.
+💰 Deterministic price calculation
 
----
+🧺 Basket optimization
 
-## 🛠️ Key Implementation Code
+🛡️ Merchant policy guardrails
 
-Below are the core pieces that make the demo flow work. They are intentionally concise to illustrate the architecture without exposing the entire codebase.
+✅ Explicit customer approval
 
-### `useDemoFlow.ts`
-```tsx
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { useCart } from '../features/cart/CartContext';
-import { primaryProduct, alternativeProducts } from '../data/mockData';
-import { getRevenueMetrics } from '../lib/revenueAnalytics';
+💳 Razorpay Test Mode checkout
 
-export enum DemoState { IDLE, INTENT, UNDERSTANDING, RECOMMENDATION, OFFER, OPTIMIZATION, POLICY_CHECK, APPROVAL, CHECKOUT, PAYMENT, SUCCESS, FAILED }
+🔁 Payment failure/recovery states
 
-interface DemoContextValue {
-  state: DemoState;
-  startDemo: () => void;
-  resetDemo: () => void;
-  exitDemo: () => void;
-  showPolicyBlockDemo: boolean;
-  togglePolicyBlockDemo: () => void;
-  revenueMetrics: ReturnType<typeof getRevenueMetrics> | null;
-}
+📋 Agent execution trace
 
-const DemoContext = createContext<DemoContextValue | undefined>(undefined);
+📈 Revenue intelligence dashboard
 
-type Action =
-  | { type: 'START' }
-  | { type: 'RESET' }
-  | { type: 'EXIT' }
-  | { type: 'SET_STATE'; payload: DemoState };
+🎬 Deterministic one-click live demo
 
-function reducer(state: DemoState, action: Action): DemoState {
-  switch (action.type) {
-    case 'START': return DemoState.INTENT;
-    case 'RESET':
-    case 'EXIT': return DemoState.IDLE;
-    case 'SET_STATE': return action.payload;
-    default: return state;
-  }
-}
+📁 Project Structure
 
-export const DemoFlowProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, DemoState.IDLE);
-  const { clearCart, resetDefaultCart, addToCart, authorizePurchase } = useCart();
-  const [showPolicyBlockDemo, setShowPolicyBlockDemo] = React.useState(false);
-  const [revenueMetrics, setRevenueMetrics] = React.useState<ReturnType<typeof getRevenueMetrics> | null>(null);
+ShopPilot/
+├── src/
+│   ├── components/
+│   ├── features/
+│   │   └── cart/
+│   │       └── CartContext.tsx
+│   ├── data/
+│   │   └── mockData.ts
+│   ├── lib/
+│   │   ├── policyEngine.ts
+│   │   └── revenueAnalytics.ts
+│   ├── hooks/
+│   │   └── useDemoFlow.ts
+│   ├── pages/
+│   ├── types/
+│   └── main.tsx
+│
+├── server/
+│   └── Express / Razorpay integration
+│
+├── .env
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 
-  const startDemo = () => {
-    dispatch({ type: 'START' });
-    dispatch({ type: 'SET_STATE', payload: DemoState.UNDERSTANDING });
-    dispatch({ type: 'SET_STATE', payload: DemoState.RECOMMENDATION });
-    clearCart();
-    addToCart(primaryProduct);
-    dispatch({ type: 'SET_STATE', payload: DemoState.OFFER });
-    const addOn = alternativeProducts[0];
-    addToCart(addOn);
-    dispatch({ type: 'SET_STATE', payload: DemoState.OPTIMIZATION });
-    dispatch({ type: 'SET_STATE', payload: DemoState.POLICY_CHECK });
-    dispatch({ type: 'SET_STATE', payload: DemoState.APPROVAL });
-    dispatch({ type: 'SET_STATE', payload: DemoState.CHECKOUT });
-    try {
-      authorizePurchase();
-      dispatch({ type: 'SET_STATE', payload: DemoState.PAYMENT });
-    } catch {
-      dispatch({ type: 'SET_STATE', payload: DemoState.FAILED });
-    }
-    setRevenueMetrics(getRevenueMetrics());
-  };
+Folder names may vary slightly depending on the current implementation; the modules above represent the core architecture documented by the project.
 
-  const resetDemo = () => { resetDefaultCart(); dispatch({ type: 'RESET' }); setRevenueMetrics(null); };
-  const exitDemo = () => { resetDefaultCart(); dispatch({ type: 'EXIT' }); setRevenueMetrics(null); };
-  const togglePolicyBlockDemo = () => setShowPolicyBlockDemo(prev => !prev);
+🚀 Getting Started
 
-  const value: DemoContextValue = { state, startDemo, resetDemo, exitDemo, showPolicyBlockDemo, togglePolicyBlockDemo, revenueMetrics };
-  return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
-};
+1. Clone the repository
 
-export const useDemoFlow = (): DemoContextValue => {
-  const ctx = useContext(DemoContext);
-  if (!ctx) throw new Error('useDemoFlow must be used within DemoFlowProvider');
-  return ctx;
-};
-```
+git clone <your-repository-url>
+cd ShopPilot
 
-### `CartContext.tsx`
-```tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Product, MerchantOffer, PurchaseAuthorization, PriceLedger, PaymentVerificationResult } from '../../types';
-import { primaryProduct, mockOffer, PRIMARY_CUSTOMER_INTENT } from '../../data/mockData';
+2. Install dependencies
 
-export interface CartContextValue {
-  items: CartItem[];
-  appliedOffer: MerchantOffer | null;
-  customerIntent: string;
-  authorization: PurchaseAuthorization | null;
-  settledPayment: PaymentVerificationResult | null;
-  subtotal: number;
-  discount: number;
-  shipping: number;
-  tax: number;
-  total: number;
-  ledger: PriceLedger;
-  addToCart: (product: Product, quantity?: number, selectedSize?: number, selectedColor?: string) => void;
-  removeFromCart: (itemId: string) => void;
-  clearCart: () => void;
-  resetDefaultCart: () => void;
-  authorizePurchase: () => PurchaseAuthorization;
-  clearAuthorization: () => void;
-  markPaymentSettled: (payment: PaymentVerificationResult) => void;
-}
-
-const CartContext = createContext<CartContextValue | undefined>(undefined);
-
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('shoppilot_cart_items_v1');
-    return saved ? JSON.parse(saved) : [{ id: 'cart-item-aerorun-x', product: { ...primaryProduct, originalPrice: 2999, finalPrice: 2799 }, quantity: 1, selectedSize: 9, selectedColor: 'Chalk & Stone Grey', appliedOffer: mockOffer }];
-  });
-  const [appliedOffer, setAppliedOffer] = useState<MerchantOffer | null>(mockOffer);
-  const [customerIntent] = useState<string>(PRIMARY_CUSTOMER_INTENT);
-  const [authorization, setAuthorization] = useState<PurchaseAuthorization | null>(null);
-  const [settledPayment, setSettledPayment] = useState<PaymentVerificationResult | null>(null);
-
-  // Sync cart changes to localStorage
-  useEffect(() => { localStorage.setItem('shoppilot_cart_items_v1', JSON.stringify(items)); }, [items]);
-
-  const addToCart = (product: Product, quantity = 1, selectedSize, selectedColor) => {
-    const newItem: CartItem = { id: `${product.id}-${Date.now()}`, product, quantity, selectedSize, selectedColor, appliedOffer: null };
-    setItems(prev => [...prev, newItem]);
-  };
-
-  const clearCart = () => setItems([]);
-  const resetDefaultCart = () => setItems([/* default item definition omitted for brevity */]);
-  const authorizePurchase = () => {
-    if (items.length === 0) throw new Error('Cart is empty');
-    const auth = { authorizedAt: Date.now(), token: 'demo-token' } as PurchaseAuthorization;
-    setAuthorization(auth);
-    return auth;
-  };
-  const clearAuthorization = () => setAuthorization(null);
-  const markPaymentSettled = (payment: PaymentVerificationResult) => setSettledPayment(payment);
-
-  // Compute totals (simplified example)
-  const subtotal = items.reduce((sum, i) => sum + i.product.finalPrice * i.quantity, 0);
-  const discount = appliedOffer?.discount ?? 0;
-  const total = subtotal - discount;
-
-  const value: CartContextValue = { items, appliedOffer, customerIntent, authorization, settledPayment, subtotal, discount, shipping: 0, tax: 0, total, ledger: { subtotal, discount, total }, addToCart, removeFromCart: () => {}, clearCart, resetDefaultCart, authorizePurchase, clearAuthorization, markPaymentSettled };
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-};
-
-export const useCart = () => {
-  const ctx = useContext(CartContext);
-  if (!ctx) throw new Error('useCart must be used within CartProvider');
-  return ctx;
-};
-```
-
-These snippets give a concise view of the deterministic demo state machine (`useDemoFlow`) and the cart/checkout logic (`CartContext`). They illustrate how the front‑end orchestrates the AI‑driven commerce flow while keeping the implementation simple and hackathon‑ready.
-
----
-
-## 📦 Getting Started
-
-```bash
-# Install dependencies
 npm install
 
-# Run the development server
+3. Configure environment variables
+
+Create a .env file for the Razorpay Test Mode credentials used by the project.
+
+RAZORPAY_KEY_ID=your_test_key_id
+RAZORPAY_KEY_SECRET=your_test_key_secret
+
+Never commit real secrets or production payment credentials to Git.
+
+4. Start the development server
+
 npm run dev
-```
-Open <http://localhost:5173> in your browser.
 
-## 🤝 Contributing
-- Do **not** redesign the UI or add new design dependencies.
-- Do **not** introduce a database or external services.
-- Keep all mock data in `src/data/mockData.ts`.
-- Preserve the existing Razorpay integration and the Stitch‑inspired visual language.
-- Follow the existing folder conventions and TypeScript typing standards.
+Open:
 
-## 📄 License
-MIT – feel free to fork and adapt for hackathon demos or internal prototypes.
+http://localhost:5173
+
+🎬 Demo Journey
+
+For the best demonstration, use the following flow:
+
+1. Open ShopPilot
+        ↓
+2. Start the live demo
+        ↓
+3. Enter / view the customer intent
+        ↓
+4. Inspect the recommended product
+        ↓
+5. Review the recommendation rationale
+        ↓
+6. Inspect merchant offer
+        ↓
+7. Review basket & final amount
+        ↓
+8. Approve the purchase
+        ↓
+9. Complete Razorpay Test Mode checkout
+        ↓
+10. Open Decision Trace
+        ↓
+11. Inspect execution + revenue intelligence
+
+🏆 What Makes It Different?
+
+ShopPilot is not positioned as just a product search UI.
+
+It demonstrates an agentic commerce workflow where the system coordinates:
+
+Intent
+  +
+Product Data
+  +
+Business Rules
+  +
+Customer Approval
+  +
+Payment
+  +
+Auditability
+
+The core product principle is:
+
+Let the agent handle the complexity, but never hide the important decisions from the customer.
+
+⚠️ Prototype Scope
+
+This repository is a hackathon/demo prototype.
+
+The current implementation uses:
+
+Deterministic demo scenarios
+
+Mock product/catalog data
+
+Browser localStorage
+
+Derived demo analytics
+
+Razorpay Test Mode
+
+It does not currently include a production database, production payment processing, or a production-grade autonomous purchasing backend.
+
+🤝 Contributing
+
+When extending the project:
+
+Keep the existing UI language and design system.
+
+Keep demo data centralized in src/data/mockData.ts.
+
+Preserve customer approval gates.
+
+Keep payment integration in Test Mode for demos.
+
+Avoid adding unnecessary UI libraries.
+
+Preserve TypeScript typing and existing folder conventions.
+
+Do not introduce a database unless the architecture is intentionally being upgraded beyond the current prototype.
+
+📄 License
+
+MIT — feel free to fork and adapt for hackathon demonstrations and internal prototypes.
