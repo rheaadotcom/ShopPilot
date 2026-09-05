@@ -13,8 +13,8 @@ import AgentTracePage from './pages/AgentTrace';
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <DemoFlowProvider>
-        <CartProvider>
+      <CartProvider>
+        <DemoFlowProvider>
           <Routes>
             {/* Screen 1: AI Commerce Agent */}
             <Route path="/" element={<AgentHomePage />} />
@@ -40,8 +40,8 @@ export const App: React.FC = () => {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </CartProvider>
-      </DemoFlowProvider>
+        </DemoFlowProvider>
+      </CartProvider>
     </BrowserRouter>
   );
 };
