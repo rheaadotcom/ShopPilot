@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "preinstall": "npm install --prefix server",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run build:server",
     "preview": "vite preview",
     "build:server": "cd server && npm run build",
     "start": "npm run build:server && node server/dist/index.js"
