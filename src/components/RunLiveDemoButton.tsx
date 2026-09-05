@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from './common/Button';
-import { useDemoFlow } from '../../hooks/useDemoFlow';
+import { useDemoFlow } from '../hooks/useDemoFlow';
 
 /**
  * Prominent button to launch the deterministic demo flow.

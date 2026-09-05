@@ -1,5 +1,4 @@
 import { demoOrders, primaryProduct } from '../data/mockData';
-import { Product } from '../types';
 
 /** Calculate total revenue from deterministic demo orders */
 export const getTotalRevenue = (): number =>

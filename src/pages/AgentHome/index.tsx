@@ -3,8 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Button } from '../../components/common/Button';
 import { RunLiveDemoButton } from '../../components/RunLiveDemoButton';
-import { DemoControls } from '../../components/DemoControls';
-import { DemoSummary } from '../../components/DemoSummary';
 import {
   primaryProduct,
   alternativeProducts,

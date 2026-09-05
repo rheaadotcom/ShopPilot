@@ -1,6 +1,6 @@
 import React from 'react';
-import { useDemoFlow } from '../../hooks/useDemoFlow';
-import { formatCurrency } from '../../lib/utils';
+import { useDemoFlow } from '../hooks/useDemoFlow';
+import { formatCurrency } from '../lib/utils';
 
 /**
  * Displays revenue and KPI metrics after the demo run.
