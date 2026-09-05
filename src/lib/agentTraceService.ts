@@ -6,6 +6,7 @@ import {
   PurchaseAuthorization,
   PaymentVerificationResult,
 } from '../types';
+import { endpoint } from '../config/api';
 
 export const DEFAULT_MERCHANT_POLICY: MerchantPolicyConfig = {
   maxOrderValue: 3000,
@@ -522,7 +523,7 @@ export function buildAgentTraceEvents(options?: {
         'Backend authority validated sha256(order_id + "|" + payment_id) with Razorpay secret. Zero false debits guarantee enforced.',
       payload: {
         algorithm: 'HMAC-SHA256',
-        verifyingAuthority: 'http://localhost:5000/api/payments/verify',
+        verifyingAuthority: endpoint('/payments/verify'),
         signatureDigest: '0x9e81f72a431ced74b39210984128...verified',
         immutableState: 'SETTLED_LOCKED',
       },

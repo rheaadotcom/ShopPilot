@@ -13,12 +13,12 @@ export const mockOffer = {
 
 export const primaryProduct: Product = {
   id: 'aerorun-x',
-  name: 'AeroRun X',
+  name: 'AeroRun X Daily Road',
   sku: 'SKU-RUN-401',
   brand: 'AeroAthletics',
   category: 'Running Shoes',
   subtitle: 'Ultralight Daily Road Running Shoe',
-  originalPrice: 3499,
+  originalPrice: 2999,
   finalPrice: 2799,
   matchScore: 99.2,
   rating: 4.8,
@@ -286,10 +286,10 @@ export const scenariosData: Record<string, ScenarioData> = {
     name: 'Running shoes under ₹3,000',
     icon: '👟',
     query: 'I need running shoes under ₹3,000 for daily running.',
-    reply: "I found 3 catalog matches. I've filtered for daily road running durability and applied your ₹200 merchant checkout credit to the AeroRun X.",
+    reply: "I found 3 catalog matches. I've filtered for daily road running durability and applied your ₹200 merchant checkout credit to the AeroRun X Daily Road.",
     product: {
       id: 'aerorun-x',
-      name: 'AeroRun X',
+      name: 'AeroRun X Daily Road',
       price: 2799,
       originalPrice: 2999,
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB6fZUecEvIvjF8B5AA6H0V5wjBDS66vhDbo1zng9uqSE3q9aIQ156TRl95nKzJUnxdRpAp8PR9EmHqo-7LNAibVh_iGgmYKi4xsBVaAERq-6W_qGUGAvTH_lBkskf5W0KRLwY6AfyAGK-YQMmqJ0pXsrEkdxf2Db6USX4mjXMSXdJ9t8pSv4CFZmzfsnvnjT8nLNvJZygT8ZuA2Sb-ZfMmhQBTxO4O8Nvj5mkC-gQxjRguGavsIm3tJw',

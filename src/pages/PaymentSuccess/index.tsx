@@ -456,7 +456,7 @@ export const PaymentSuccessPage: React.FC = () => {
                     </span>
                   </div>
                   <p className="font-body text-body-sm text-on-surface-variant">
-                    Cryptographic signature matched against Razorpay test secret by ShopPilot backend authority
+                    Cryptographic signature matched against Razorpay test secret by {endpoint('/payments/verify')} backend authority
                   </p>
                 </div>
               </div>
@@ -574,7 +574,7 @@ export const PaymentSuccessPage: React.FC = () => {
 
                     <div className="flex flex-col gap-1">
                       <span className="text-on-surface-variant text-[11px] uppercase">Authority Verification Endpoint</span>
-                      <span className="text-on-surface">POST http://localhost:5000/api/payments/verify</span>
+                      <span className="text-on-surface">POST {endpoint('/payments/verify')}</span>
                     </div>
 
                     <div className="flex flex-col gap-1">

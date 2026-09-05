@@ -9,13 +9,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 
-// Security & Parsing Middleware
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-);
+  // Security & Parsing Middleware
+  // Restrict CORS to known origins for demo and dev environments
+  const allowedOrigins = [
+    'http://localhost:5173', // Vite dev server
+    'https://demo.shoppilot.com', // Production demo host (adjust as needed)
+  ];
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+    })
+  );
 app.use(express.json());
 
 // API Health Check
