@@ -7,20 +7,23 @@ import paymentRoutes from './routes/payment.routes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+const PORT = process.env.PORT || 5000;
 
   // Security & Parsing Middleware
   // Restrict CORS to known origins for demo and dev environments
   const allowedOrigins = [
     'http://localhost:5173', // Vite dev server
+    'http://localhost:5174',
     'https://demo.shoppilot.com', // Production demo host (adjust as needed)
-  ];
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
   app.use(
     cors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
