@@ -375,3 +375,17 @@ export const mockActivityStream: ActivityStreamItem[] = [
     status: 'active_cart',
   },
 ];
+
+// Deterministic demo orders for revenue analytics
+export interface DemoOrder {
+  orderId: string;
+  productId: string;
+  quantity: number;
+  total: number; // in INR
+}
+
+export const demoOrders: DemoOrder[] = [
+  { orderId: 'demo-001', productId: primaryProduct.id, quantity: 1, total: primaryProduct.finalPrice },
+  { orderId: 'demo-002', productId: alternativeProducts[0].id, quantity: 2, total: alternativeProducts[0].finalPrice * 2 },
+  { orderId: 'demo-003', productId: alternativeProducts[1].id, quantity: 1, total: alternativeProducts[1].finalPrice },
+];

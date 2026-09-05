@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Button } from '../../components/common/Button';
+import { RunLiveDemoButton } from '../../components/RunLiveDemoButton';
+import { DemoControls } from '../../components/DemoControls';
+import { DemoSummary } from '../../components/DemoSummary';
 import {
   primaryProduct,
   alternativeProducts,
@@ -157,6 +160,7 @@ export const AgentHomePage: React.FC = () => {
               >
                 Try the Agent
               </Button>
+                <RunLiveDemoButton />
               <a
                 href="#how-it-works"
                 className="inline-flex items-center justify-center gap-space-8 px-space-24 py-space-12 rounded-xl bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm hover:bg-surface-container-low transition-all border border-outline-variant/30"
