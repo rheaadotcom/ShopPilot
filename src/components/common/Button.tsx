@@ -25,7 +25,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-primary text-on-primary hover:bg-surface-tint shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] rounded-lg',
+      'bg-primary text-white hover:bg-surface-tint shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] rounded-lg',
     secondary:
       'bg-secondary text-on-secondary hover:bg-secondary-container shadow-sm rounded-lg',
     outline:

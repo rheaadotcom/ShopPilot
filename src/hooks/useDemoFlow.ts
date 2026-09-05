@@ -104,7 +104,7 @@ export const DemoFlowProvider: React.FC<{ children: ReactNode }> = ({ children }
     revenueMetrics,
   };
 
-  return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
+  return React.createElement(DemoContext.Provider, { value }, children);
 };
 
 export const useDemoFlow = (): DemoContextValue => {
