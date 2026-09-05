@@ -4,6 +4,7 @@ import { PageLayout } from '../../components/layout/PageLayout';
 import { primaryProduct, defaultAgentSession } from '../../data/mockData';
 import { formatCurrency } from '../../lib/utils';
 import { PaymentVerificationResult, Product } from '../../types';
+import { endpoint } from '../../config/api';
 
 interface PaymentSuccessLocationState {
   payment?: PaymentVerificationResult;
